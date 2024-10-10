@@ -14,7 +14,6 @@ github = "https://github.com/Gerald-Ha"
 config_file = os.path.expanduser("~/.gg-asus-fan-control.conf")  
 
 def get_hwmon_path():
-    """Finds the correct hwmon path for asus-nb-wmi dynamically."""
     base_path = "/sys/devices/platform/asus-nb-wmi/hwmon/"
     hwmon_paths = glob.glob(base_path + "hwmon*")
     if hwmon_paths:
@@ -66,12 +65,26 @@ def monitor_temperature(interval=3):
                 set_fan_mode("auto", hwmon_path)
         time.sleep(interval)
 
+def monitor_gaming_mode(interval=3):
+    hwmon_path = get_hwmon_path()
+    while True:
+        current_temp = get_k10temp_temperature()
+        if current_temp is not None:
+            if current_temp >= 65:
+                set_fan_mode("full", hwmon_path)
+            else:
+                set_fan_mode("auto", hwmon_path)
+        time.sleep(interval)
+
 def start_service_mode():
     choice = load_choice()
     hwmon_path = get_hwmon_path()  
     if choice == "gg-modus":
         print("Starting GG-Modus based on previous selection.")
         monitor_temperature(interval=4)
+    elif choice == "gaming-modus":
+        print("Starting Gaming-Modus based on previous selection.")
+        monitor_gaming_mode(interval=4)
     elif choice == "system":
         print("Starting System Modus based on previous selection.")
         set_fan_mode("auto", hwmon_path)
@@ -97,6 +110,7 @@ def main():
     print()
     print("1. System Modus")
     print("2. GG-Modus")
+    print("3. Gaming-Modus")
     print()
     choice = input("Enter the number of your choice: ")
     hwmon_path = get_hwmon_path()  
@@ -112,6 +126,17 @@ def main():
         if pid == 0:
            
             monitor_temperature(interval=4)
+        else:
+            
+            sys.exit(0)
+    elif choice == "3":
+        save_choice("gaming-modus")
+        print("Gaming-Modus Activated")
+       
+        pid = os.fork()
+        if pid == 0:
+           
+            monitor_gaming_mode(interval=4)
         else:
             
             sys.exit(0)
