@@ -37,7 +37,7 @@ Due to hardware limitations, it is not possible to set the fan speed at specific
 Clone the repository and navigate to the project directory:
 
 ```bash
-git clone https://github.com/your-username/GG-Asus-Fan-Control.git
+git clone https://github.com/Gerald-Ha/GG-Asus-Fan-Control.git
 cd GG-Asus-Fan-Control
 ```
 
