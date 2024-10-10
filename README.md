@@ -3,7 +3,9 @@
 
 GG Asus Fan Control is a Python-based script specifically designed for Asus Vivobook notebooks, where regulated fan control is otherwise unavailable. The script provides two modes: **System Mode** and **GG Mode**, each designed to optimize cooling and performance based on the user’s choice.
 
-![2024-10-10_17-16](https://github.com/user-attachments/assets/bc46e1ca-2626-47ad-a729-ebaa7908e2bb)
+![2024-10-10_21-04](https://github.com/user-attachments/assets/91bc89b9-0057-44e9-b211-aa5a07b15724)
+
+
 
 
 
@@ -11,8 +13,12 @@ GG Asus Fan Control is a Python-based script specifically designed for Asus Vivo
 
 - **System Mode**: Relinquishes control to the system, letting it manage the fan speeds automatically.
 - **GG Mode**: Monitors the system's temperature and dynamically adjusts fan speeds to maintain optimal performance.
-- **Background Operation**: In GG Mode, the script runs as a background process, ensuring continuous monitoring without occupying the terminal.
+- **Gaming Mode**: Sets the fan to 100% speed when the temperature reaches 65°C, ensuring maximum cooling. When the temperature drops below 
+  65°C, the system takes back control to adjust fan speed automatically.
+- **Background Operation**: In GG and Gaming Modes, the script runs as a background process, ensuring continuous monitoring without occupying 
+  the terminal.
 - **User-Friendly Interface**: Simple command-line interface to choose between modes.
+
 
 ## Important Note
 
@@ -60,6 +66,7 @@ You will be prompted to choose between the available modes:
 
 1. **System Mode**: The system will manage the fan speeds automatically.
 2. **GG Mode**: The script will actively monitor the temperature and adjust the fan speeds.
+3. **Gaming Mode**: The script will set the fan to full speed when the temperature reaches 65°C and will return control to the system when the temperature is below 65°C. This mode is designed for gaming sessions where the fan in GG Mode might frequently switch on and off as the temperature hovers around 82°C, which can be distracting. By keeping the fan at full speed, the Gaming Mode ensures consistent cooling and minimizes disruptions.
 
 ### Example
 
@@ -67,8 +74,9 @@ You will be prompted to choose between the available modes:
 Please choose an option:
 1. System Mode
 2. GG Mode
-Enter the number of your choice: 2
-GG Mode Activated
+3. Gaming Mode
+Enter the number of your choice: 3
+Gaming Mode Activated
 ```
 
 ## Uninstallation
