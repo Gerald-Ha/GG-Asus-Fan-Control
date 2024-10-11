@@ -9,7 +9,7 @@ GG Asus Fan Control is a Python-based script specifically designed for Asus Vivo
 ## Features
 
 - **System Mode**: Relinquishes control to the system, letting it manage the fan speeds automatically.
-- **GG Mode**: Monitors the system's temperature and dynamically adjusts fan speeds to maintain optimal performance. The default temperature threshold is 70°C.
+- **GG Mode**: Monitors the system's temperature and dynamically adjusts fan speeds to maintain optimal performance. The default temperature threshold is 84°C.
 - **Gaming Mode**: Sets the fan to 100% speed when the temperature reaches the configured threshold (default is 70°C), ensuring maximum cooling. When the temperature drops below this threshold, the system takes back control to adjust fan speed automatically.
 - **Current Mode Display**: The current active mode is displayed when the script starts, providing users with information about the system's current status.
 - **Customizable Temperature Thresholds**: The temperature thresholds for both GG Mode and Gaming Mode can be configured at the beginning of the script to fit user preferences.
