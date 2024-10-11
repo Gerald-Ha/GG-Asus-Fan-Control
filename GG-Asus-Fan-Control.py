@@ -3,24 +3,36 @@ import sys
 import subprocess
 import time
 import os
-import glob
+import signal
 
 # Metadata
-version = "3.0.1"
+version = "3.0.3"
 author = "Gerald Hasani"
 name = "GG-Asus-Fan-Control"
 email = "contact@gerald-hasani.com"
 github = "https://github.com/Gerald-Ha"
 config_file = os.path.expanduser("~/.gg-asus-fan-control.conf")  
+pid_file = os.path.expanduser("~/.gg-asus-fan-control.pid")  
 
-def get_hwmon_path():
-    base_path = "/sys/devices/platform/asus-nb-wmi/hwmon/"
-    hwmon_paths = glob.glob(base_path + "hwmon*")
-    if hwmon_paths:
-        return hwmon_paths[0]  
-    else:
-        print("Error: hwmon path not found.")
-        sys.exit(1)
+# Temperatur-Schwellenwerte für die verschiedenen Modi
+GG_MODE_THRESHOLD = 84  # Temperatur in Grad Celsius für GG-Mode
+GAMING_MODE_THRESHOLD = 70  # Temperatur in Grad Celsius für Gaming Mode
+
+def print_ascii_art():
+    
+    CYAN = "\033[36m"
+    RESET = "\033[0m"  
+
+    ascii_art = r"""
+  ____  ____       _____           
+ / ___|/ ___|     |  ___|_ _ _ __  
+| |  _| |  _ _____| |_ / _` | '_ \ 
+| |_| | |_| |_____|  _| (_| | | | |
+ \____|\____|     |_|  \__,_|_| |_|
+
+    """
+    print(f"{CYAN}{ascii_art}{RESET}")
+    print()
 
 def get_k10temp_temperature():
     try:
@@ -30,16 +42,19 @@ def get_k10temp_temperature():
     except Exception as debug:
         return None
 
-def set_fan_speed(percentage, hwmon_path):
-    pwm_value = 0 if percentage == 100 else 2
-    command = f'echo {pwm_value} | sudo tee {hwmon_path}/pwm2_enable'
-    os.system(command)
-
-def set_fan_mode(mode, hwmon_path):
-    if mode == "auto":
-        command = f'echo 2 | sudo tee {hwmon_path}/pwm2_enable'
-    elif mode == "full":
-        command = f'echo 0 | sudo tee {hwmon_path}/pwm2_enable'
+def set_fan_speed_manual(mode):
+    
+    hwmon_dirs = [d for d in os.listdir("/sys/devices/platform/asus-nb-wmi/hwmon/") if d.startswith("hwmon")]
+    if not hwmon_dirs:
+        print("Kein gültiges hwmon-Verzeichnis gefunden.")
+        return
+    
+    hwmon_dir = hwmon_dirs[0]
+    
+    if mode == "full":
+        command = f'echo 0 | sudo tee /sys/devices/platform/asus-nb-wmi/hwmon/{hwmon_dir}/pwm1_enable'
+    elif mode == "auto":
+        command = f'echo 2 | sudo tee /sys/devices/platform/asus-nb-wmi/hwmon/{hwmon_dir}/pwm1_enable'
     os.system(command)
 
 def save_choice(choice):
@@ -47,98 +62,117 @@ def save_choice(choice):
         file.write(choice)
 
 def load_choice():
-    if os.path.exists(config_file):
+    try:
         with open(config_file, "r") as file:
             return file.read().strip()
-    return None
+    except FileNotFoundError:
+        return "system"  
 
-def monitor_temperature(interval=3):
-    hwmon_path = get_hwmon_path()  
+def save_pid(pid):
+    with open(pid_file, "w") as file:
+        file.write(str(pid))
+
+def load_pid():
+    try:
+        with open(pid_file, "r") as file:
+            return int(file.read().strip())
+    except FileNotFoundError:
+        return None
+
+def stop_monitoring():
+    pid = load_pid()
+    if pid:
+        try:
+            os.kill(pid, signal.SIGTERM)
+            os.remove(pid_file)
+            print("Monitoring process stopped.")
+        except ProcessLookupError:
+            print("No running monitoring process found.")
+        except Exception as e:
+            print(f"Error stopping the process: {e}")
+    else:
+        print("No monitoring process recorded.")
+
+def monitor_temperature(mode, interval=3):
     while True:
         current_temp = get_k10temp_temperature()
         if current_temp is not None:
-            if current_temp >= 82:
-                set_fan_mode("full", hwmon_path)
-            elif current_temp >= 65:
-                set_fan_speed(60, hwmon_path)
+            if mode == "gaming" and current_temp >= GAMING_MODE_THRESHOLD:
+                set_fan_speed_manual("full")
+            elif mode == "gg" and current_temp >= GG_MODE_THRESHOLD:
+                set_fan_speed_manual("full")
             else:
-                set_fan_mode("auto", hwmon_path)
+                set_fan_speed_manual("auto")
         time.sleep(interval)
-
-def monitor_gaming_mode(interval=3):
-    hwmon_path = get_hwmon_path()
-    while True:
-        current_temp = get_k10temp_temperature()
-        if current_temp is not None:
-            if current_temp >= 65:
-                set_fan_mode("full", hwmon_path)
-            else:
-                set_fan_mode("auto", hwmon_path)
-        time.sleep(interval)
-
-def start_service_mode():
-    choice = load_choice()
-    hwmon_path = get_hwmon_path()  
-    if choice == "gg-modus":
-        print("Starting GG-Modus based on previous selection.")
-        monitor_temperature(interval=4)
-    elif choice == "gaming-modus":
-        print("Starting Gaming-Modus based on previous selection.")
-        monitor_gaming_mode(interval=4)
-    elif choice == "system":
-        print("Starting System Modus based on previous selection.")
-        set_fan_mode("auto", hwmon_path)
 
 def main():
-    ascii_art = r"""
-  ____  ____       _____           
- / ___|/ ___|     |  ___|_ _ _ __  
-| |  _| |  _ _____| |_ / _` | '_ \ 
-| |_| | |_| |_____|  _| (_| | | | |
- \____|\____|     |_|  \__,_|_| |_|
+    print_ascii_art()
+    
+    
+    current_mode = load_choice()
+    mode_display = {
+        "system": "System Mode",
+        "gg-mode": "GG-Mode",
+        "gaming-mode": "Gaming Mode"
+    }
+    current_mode_display = mode_display.get(current_mode, "Unknown Mode")
+    print(f"Current Mode: {current_mode_display}")
+    print()  
 
-    """
-    print(ascii_art)
-    print()
-    
-    
     if "--service" in sys.argv:
-        start_service_mode()
-        sys.exit(0)
+        choice = load_choice()
+        if choice == "gg-mode":
+            print("GG-Mode is being activated as a service.")
+            pid = os.fork()
+            if pid == 0:
+                monitor_temperature("gg", interval=4)
+            else:
+                save_pid(pid)
+                sys.exit(0)
+        elif choice == "gaming-mode":
+            print("Gaming Mode is being activated as a service.")
+            pid = os.fork()
+            if pid == 0:
+                monitor_temperature("gaming", interval=4)
+            else:
+                save_pid(pid)
+                sys.exit(0)
+        else:
+            set_fan_speed_manual("auto")
+        return
 
     print("Please choose an option:")
-    print()
-    print("1. System Modus")
-    print("2. GG-Modus")
-    print("3. Gaming-Modus")
-    print()
+    print()  
+    print("1. System Mode")
+    print("2. GG-Mode")
+    print("3. Gaming Mode")
+    print()  
     choice = input("Enter the number of your choice: ")
-    hwmon_path = get_hwmon_path()  
+    print()  
     if choice == "1":
-        set_fan_mode("auto", hwmon_path)
+        stop_monitoring()
+        set_fan_speed_manual("auto")
         save_choice("system")
         print("Fan control set to system control mode. Fan will operate automatically.")
     elif choice == "2":
-        save_choice("gg-modus")
-        print("GG-Modus Activated")
-       
+        stop_monitoring()
+        save_choice("gg-mode")
+        print("GG-Mode Activated")
         pid = os.fork()
         if pid == 0:
-           
-            monitor_temperature(interval=4)
+            monitor_temperature("gg", interval=4)
         else:
-            
+            save_pid(pid)
             sys.exit(0)
     elif choice == "3":
-        save_choice("gaming-modus")
-        print("Gaming-Modus Activated")
-       
+        stop_monitoring()
+        save_choice("gaming-mode")
+        print("Gaming Mode Activated")
         pid = os.fork()
         if pid == 0:
-           
-            monitor_gaming_mode(interval=4)
+            monitor_temperature("gaming", interval=4)
         else:
-            
+            save_pid(pid)
             sys.exit(0)
     else:
         print("Invalid choice. Please run the script again and choose a valid option.")
