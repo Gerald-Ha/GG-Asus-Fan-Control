@@ -1,32 +1,29 @@
-#!/bin/python3
+#!/usr/bin/env python3
 import sys
 import subprocess
 import time
 import os
-import signal
 
 # Metadata
-version = "3.0.3"
+version = "3.0.4"
 author = "Gerald Hasani"
 name = "GG-Asus-Fan-Control"
 email = "contact@gerald-hasani.com"
 github = "https://github.com/Gerald-Ha"
-config_file = os.path.expanduser("~/.gg-asus-fan-control.conf")  
-pid_file = os.path.expanduser("~/.gg-asus-fan-control.pid")  
+config_file = os.path.expanduser("~/.gg-asus-fan-control.conf")
 
 # Temperatur-Schwellenwerte für die verschiedenen Modi
 GG_MODE_THRESHOLD = 84  # Temperatur in Grad Celsius für GG-Mode
 GAMING_MODE_THRESHOLD = 70  # Temperatur in Grad Celsius für Gaming Mode
 
 def print_ascii_art():
-    
     CYAN = "\033[36m"
-    RESET = "\033[0m"  
+    RESET = "\033[0m"
 
     ascii_art = r"""
   ____  ____       _____           
  / ___|/ ___|     |  ___|_ _ _ __  
-| |  _| |  _ _____| |_ / _` | '_ \ 
+| |  _| |  _ _____| |_ / _  | '_ \ 
 | |_| | |_| |_____|  _| (_| | | | |
  \____|\____|     |_|  \__,_|_| |_|
 
@@ -36,26 +33,34 @@ def print_ascii_art():
 
 def get_k10temp_temperature():
     try:
-        debug = subprocess.getoutput("sensors | grep 'Tctl'")
-        temp_value = float(debug.split(":")[1].strip().split('\xb0')[0])
+        output = subprocess.getoutput("sensors | grep 'Tctl'")
+        temp_value = float(output.split(":")[1].strip().split('°')[0])
         return temp_value
-    except Exception as debug:
+    except Exception:
         return None
 
 def set_fan_speed_manual(mode):
-    
     hwmon_dirs = [d for d in os.listdir("/sys/devices/platform/asus-nb-wmi/hwmon/") if d.startswith("hwmon")]
     if not hwmon_dirs:
         print("Kein gültiges hwmon-Verzeichnis gefunden.")
         return
-    
+
     hwmon_dir = hwmon_dirs[0]
-    
+    pwm1_enable_path = f'/sys/devices/platform/asus-nb-wmi/hwmon/{hwmon_dir}/pwm1_enable'
+
     if mode == "full":
-        command = f'echo 0 | sudo tee /sys/devices/platform/asus-nb-wmi/hwmon/{hwmon_dir}/pwm1_enable'
+        value = '0'
     elif mode == "auto":
-        command = f'echo 2 | sudo tee /sys/devices/platform/asus-nb-wmi/hwmon/{hwmon_dir}/pwm1_enable'
-    os.system(command)
+        value = '2'
+    else:
+        print("Unbekannter Modus")
+        return
+
+    try:
+        with open(pwm1_enable_path, 'w') as f:
+            f.write(value)
+    except Exception as e:
+        print(f"Fehler beim Setzen der Lüftergeschwindigkeit: {e}")
 
 def save_choice(choice):
     with open(config_file, "w") as file:
@@ -66,32 +71,7 @@ def load_choice():
         with open(config_file, "r") as file:
             return file.read().strip()
     except FileNotFoundError:
-        return "system"  
-
-def save_pid(pid):
-    with open(pid_file, "w") as file:
-        file.write(str(pid))
-
-def load_pid():
-    try:
-        with open(pid_file, "r") as file:
-            return int(file.read().strip())
-    except FileNotFoundError:
-        return None
-
-def stop_monitoring():
-    pid = load_pid()
-    if pid:
-        try:
-            os.kill(pid, signal.SIGTERM)
-            os.remove(pid_file)
-            print("Monitoring process stopped.")
-        except ProcessLookupError:
-            print("No running monitoring process found.")
-        except Exception as e:
-            print(f"Error stopping the process: {e}")
-    else:
-        print("No monitoring process recorded.")
+        return "system"
 
 def monitor_temperature(mode, interval=3):
     while True:
@@ -107,8 +87,7 @@ def monitor_temperature(mode, interval=3):
 
 def main():
     print_ascii_art()
-    
-    
+
     current_mode = load_choice()
     mode_display = {
         "system": "System Mode",
@@ -116,66 +95,47 @@ def main():
         "gaming-mode": "Gaming Mode"
     }
     current_mode_display = mode_display.get(current_mode, "Unknown Mode")
-    print(f"Current Mode: {current_mode_display}")
-    print()  
+    print(f"Aktueller Modus: {current_mode_display}")
+    print()
 
     if "--service" in sys.argv:
         choice = load_choice()
         if choice == "gg-mode":
-            print("GG-Mode is being activated as a service.")
-            pid = os.fork()
-            if pid == 0:
-                monitor_temperature("gg", interval=4)
-            else:
-                save_pid(pid)
-                sys.exit(0)
+            print("GG-Mode wird als Service aktiviert.")
+            monitor_temperature("gg", interval=4)
         elif choice == "gaming-mode":
-            print("Gaming Mode is being activated as a service.")
-            pid = os.fork()
-            if pid == 0:
-                monitor_temperature("gaming", interval=4)
-            else:
-                save_pid(pid)
-                sys.exit(0)
+            print("Gaming Mode wird als Service aktiviert.")
+            monitor_temperature("gaming", interval=4)
         else:
             set_fan_speed_manual("auto")
         return
 
-    print("Please choose an option:")
-    print()  
+    print("Bitte wählen Sie eine Option:")
+    print()
     print("1. System Mode")
     print("2. GG-Mode")
     print("3. Gaming Mode")
-    print()  
-    choice = input("Enter the number of your choice: ")
-    print()  
+    print()
+    choice = input("Geben Sie die Nummer Ihrer Wahl ein: ")
+    print()
     if choice == "1":
-        stop_monitoring()
-        set_fan_speed_manual("auto")
         save_choice("system")
-        print("Fan control set to system control mode. Fan will operate automatically.")
+        set_fan_speed_manual("auto")
+        print("Lüftersteuerung auf Systemmodus gesetzt. Der Lüfter arbeitet automatisch.")
+        
+        os.system("sudo systemctl stop gg-asus-fan-control.service")
     elif choice == "2":
-        stop_monitoring()
         save_choice("gg-mode")
-        print("GG-Mode Activated")
-        pid = os.fork()
-        if pid == 0:
-            monitor_temperature("gg", interval=4)
-        else:
-            save_pid(pid)
-            sys.exit(0)
+        print("GG-Mode aktiviert")
+        
+        os.system("sudo systemctl restart gg-asus-fan-control.service")
     elif choice == "3":
-        stop_monitoring()
         save_choice("gaming-mode")
-        print("Gaming Mode Activated")
-        pid = os.fork()
-        if pid == 0:
-            monitor_temperature("gaming", interval=4)
-        else:
-            save_pid(pid)
-            sys.exit(0)
+        print("Gaming Mode aktiviert")
+        
+        os.system("sudo systemctl restart gg-asus-fan-control.service")
     else:
-        print("Invalid choice. Please run the script again and choose a valid option.")
+        print("Ungültige Auswahl. Bitte führen Sie das Skript erneut aus und wählen Sie eine gültige Option.")
 
 if __name__ == "__main__":
     main()
