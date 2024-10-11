@@ -1,10 +1,9 @@
 
 # GG Asus Fan Control
 
-GG Asus Fan Control is a Python-based script specifically designed for Asus Vivobook notebooks, where regulated fan control is otherwise unavailable. The script provides three modes: **System Mode**, **GG Mode**, and **Gaming Mode**, each designed to optimize cooling and performance based on the user’s choice.
+GG Asus Fan Control is a Python-based script specifically designed for Asus Vivobook notebooks, where regulated fan control is otherwise unavailable. Many Asus Vivobooks have hardware limitations under Linux, preventing direct fan control through standard utilities. This script provides a solution by leveraging the `lm-sensors` package and root permissions to manage fan speeds effectively. The script provides three modes: **System Mode**, **GG Mode**, and **Gaming Mode**, each designed to optimize cooling and performance based on the user’s choice.
 
 ![2024-10-11_14-47](https://github.com/user-attachments/assets/61cc254f-a5a7-4c05-a470-4ed0263b01e0)
-
 
 ## Features
 
@@ -16,6 +15,10 @@ GG Asus Fan Control is a Python-based script specifically designed for Asus Vivo
 - **Background Operation**: In GG and Gaming Modes, the script runs as a background process, ensuring continuous monitoring without occupying the terminal.
 - **User-Friendly Interface**: Simple command-line interface to choose between modes.
 - **Persistent Mode Configuration**: The script remembers the last selected mode and automatically applies it upon restart.
+
+## How it Works
+
+Due to the limitations of certain Asus Vivobook models under Linux, it is not possible to directly control the hardware for fan speed regulation. This script addresses that limitation by utilizing available sensor data and controlling the fan speed through system commands. By operating in the background, it ensures that the fan control remains active without manual intervention, providing a consistent cooling experience.
 
 ## Important Note
 
