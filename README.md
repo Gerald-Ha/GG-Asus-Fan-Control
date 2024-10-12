@@ -121,4 +121,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 Gerald Hasani
 
 Contact: [contact@gerald-hasani.com](mailto:contact@gerald-hasani.com)  
-GitHub: [https://github.com/Gerald-Ha](https://github.com/Gerald-Ha)
+Gitea: [gitea.gerald-hasani.com/Gerald](https://gitea.gerald-hasani.com/Gerald)  
+GitHub: [github.com/Gerald-Ha](https://github.com/Gerald-Ha)
+
